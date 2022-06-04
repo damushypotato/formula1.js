@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const baseURL = 'https://ergast.com/api/f1';
 
-export const Request = async (url: string): Promise<Object> => {
+export const Request = async (url: string): Promise<any> => {
     const data = await axios.get(url + '.json', {
         baseURL,
         responseType: 'json',

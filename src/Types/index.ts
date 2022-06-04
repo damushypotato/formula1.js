@@ -1,4 +1,45 @@
 // schedule.ts
+
+export interface loosegp {
+    round: string;
+    raceName: string;
+    Circuit: {
+        circuitId: string;
+        circuitName: string;
+        Location: {
+            lat: string;
+            long: string;
+            locality: string;
+            country: string;
+        };
+    };
+    //data from 2022 (any beyond?) has datetime for race and all other sessions
+    //data before 2022 has race datetime, but only has date for other sessions, no time
+    //data before 2021 only has race datetime, no other sessions
+    //data from 2020 - 2005 has datetime for race only, no other sessions
+    //data before 2005 has race date only, no time, no other sessions
+
+    //race times
+    date: string;
+    time?: string;
+
+    FirstPractice?: datetime;
+    SecondPractice?: datetime;
+    //no fp3 during a sprint weekend
+    ThirdPractice?: datetime;
+    Qualifying?: datetime;
+    Sprint?: datetime;
+}
+
+export interface ScheduleAPIloose {
+    MRData: {
+        total: string;
+        RaceTable: {
+            season: string;
+            Races: loosegp[];
+        };
+    };
+}
 export interface ScheduleResponse {
     total: string;
     season: string;
@@ -47,4 +88,9 @@ export interface Session {
 export interface datetime {
     date: string;
     time: string;
+}
+
+export interface datet {
+    date: string;
+    time?: string;
 }

@@ -56,7 +56,7 @@ interface looseAPIresponse {
 export const Schedule = async (
     year: number | 'current'
 ): Promise<ScheduleResponse> => {
-    const req = (await Request(year.toString())) as looseAPIresponse;
+    const req: looseAPIresponse = await Request(year.toString());
 
     const { total, RaceTable } = req.MRData;
 

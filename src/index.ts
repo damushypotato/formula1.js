@@ -1,1 +1,1 @@
-export { Schedule } from './Methods/schedule';
+export { Schedule } from './Schedule';
