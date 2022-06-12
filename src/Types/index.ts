@@ -70,12 +70,12 @@ export interface CircuitLocation {
 }
 
 export type sessionType =
-    | 'FP1'
-    | 'FP2'
-    | 'FP3'
-    | 'QUALIFYING'
-    | 'SPRINT'
-    | 'RACE';
+    | 'Free Practice 1'
+    | 'Free Practice 2'
+    | 'Free Practice 3'
+    | 'Qualifying'
+    | 'Sprint Qualifying'
+    | 'Race';
 
 export interface Session {
     type: sessionType;

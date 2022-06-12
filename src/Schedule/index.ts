@@ -1,13 +1,13 @@
 import { Request } from '../Modules/Request';
 import { getDate } from '../Modules/Tools';
-import { datet, loosegp, ScheduleAPIloose } from '../Types';
+import { datet, loosegp, ScheduleAPIloose, sessionType } from '../Types';
 
 export class Schedule {
     constructor(year: 'current' | number) {
         this.year = year;
     }
 
-    public async setup(): Promise<Schedule> {
+    public async get(): Promise<Schedule> {
         const data = (await Request(this.year.toString())) as ScheduleAPIloose;
         this.data = data;
         const schedule = data.MRData;
@@ -15,25 +15,37 @@ export class Schedule {
         this.season = parseInt(schedule.RaceTable.season);
         this.rounds = schedule.RaceTable.Races.map(r => new GrandPrix(this, r));
 
+        this.initialized = true;
         return this;
     }
 
     private year: 'current' | number;
     private data: ScheduleAPIloose;
+    private initialized: boolean = false;
 
     season: number;
     rounds: GrandPrix[];
 
-    findNextSession(from_date: Date): Session {
-        //find the upcoming session
+    getAllSessions(): Session[] {
         let ss = [];
-        this.rounds.forEach(g => {
+        for (const g of this.rounds) {
             ss.push(...g.getSessionsArray());
-        });
-        return ss
-            .sort((a, b) => a.date.getTime() - b.date.getTime())
-            .find(s => s.date > from_date);
+        }
+        return ss;
     }
+
+    findNextSession(): Session {
+        let ss = this.getAllSessions();
+        return ss.filter(s => !s.completed)[0];
+    }
+
+    findLastSession(): Session {
+        let ss = this.getAllSessions();
+        return ss.filter(s => s.completed).at(-1);
+    }
+
+    // findNextSessionFromDate(date: Date)
+    // findLastSessionFromDate(date: Date)
 }
 
 export class GrandPrix {
@@ -42,19 +54,45 @@ export class GrandPrix {
         this.round = parseInt(data.round);
         this.season = schedule.season;
         this.sessions = {
-            race: new Session(this, { date: data.date, time: data.time }),
+            race: new Session(
+                this,
+                { date: data.date, time: data.time },
+                'Race'
+            ),
         };
         if (data.FirstPractice && data.SecondPractice && data.Qualifying) {
-            this.sessions.fp1 = new Session(this, data.FirstPractice);
-            this.sessions.fp2 = new Session(this, data.SecondPractice);
-            this.sessions.qualifying = new Session(this, data.Qualifying);
+            this.sessions.fp1 = new Session(
+                this,
+                data.FirstPractice,
+                'Free Practice 1'
+            );
+            this.sessions.fp2 = new Session(
+                this,
+                data.SecondPractice,
+                'Free Practice 2'
+            );
+            this.sessions.qualifying = new Session(
+                this,
+                data.Qualifying,
+                'Qualifying'
+            );
         }
         if (data.Sprint) {
-            this.sessions.sprint = new Session(this, data.Sprint);
+            this.sessions.sprint = new Session(
+                this,
+                data.Sprint,
+                'Sprint Qualifying'
+            );
         } else if (data.ThirdPractice) {
-            this.sessions.fp3 = new Session(this, data.ThirdPractice);
+            this.sessions.fp3 = new Session(
+                this,
+                data.ThirdPractice,
+                'Free Practice 3'
+            );
         }
         this.schedule = schedule;
+        this.sprintWeekend = this.sessions.sprint != null;
+        this.circuit = new Circuit(this, data.Circuit);
     }
 
     name: string;
@@ -63,7 +101,6 @@ export class GrandPrix {
     schedule: Schedule;
     sprintWeekend: boolean;
     circuit: Circuit;
-    id: string;
     sessions: {
         fp1?: Session;
         fp2?: Session;
@@ -74,37 +111,27 @@ export class GrandPrix {
     };
 
     getSessionsArray(): Session[] {
-        const a = [];
-        a.push(this.sessions.fp1);
-        a.push(this.sessions.fp2);
-        a.push(this.sessions.fp3);
-        a.push(this.sessions.qualifying);
-        a.push(this.sessions.sprint);
-        a.push(this.sessions.race);
-        return a.filter(Boolean);
+        const { fp1, fp2, fp3, qualifying, sprint, race } = this.sessions;
+        return [fp1, fp2, fp3, qualifying, sprint, race].filter(Boolean);
     }
 }
 
 export class Session {
-    constructor(grandprix: GrandPrix, data: datet) {
+    constructor(grandprix: GrandPrix, data: datet, name: sessionType) {
         this.grandprix = grandprix;
         this.date = getDate({
             date: data.date,
             time: data.time || '00:00:00Z',
         });
+        this.name = name;
+        this.completed = this.date < new Date();
     }
 
-    name:
-        | 'Free Practice 1'
-        | 'Free Practice 2'
-        | 'Free Practice 3'
-        | 'Qualifying'
-        | 'Sprint Qualifying'
-        | 'Race';
+    name: sessionType;
     grandprix: GrandPrix;
     date: Date;
-    length: number;
     completed: boolean;
+    // length: number/string? (1:30:00 | 69 laps);
 }
 
 export class Circuit {
