@@ -1,6 +1,6 @@
 {
     "name": "formula1.js",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "description": "Formula 1 Ergast API Wrapper",
     "main": "dist/index.js",
     "scripts": {
