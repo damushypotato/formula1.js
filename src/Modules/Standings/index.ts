@@ -54,6 +54,8 @@ export class ConstructorStandings extends Standings {
         this.initialized = true;
         return this;
     };
+
+    declare standings: ConstructorStanding[];
 }
 
 export class DriverStandings extends Standings {
@@ -81,6 +83,8 @@ export class DriverStandings extends Standings {
         this.initialized = true;
         return this;
     };
+
+    declare standings: DriverStanding[];
 }
 
 export class Standing {
