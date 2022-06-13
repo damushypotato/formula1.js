@@ -1,13 +1,23 @@
-import { Request } from '../Modules/Request';
-import { getDate } from '../Modules/Tools';
-import { datet, loosegp, ScheduleAPIloose, sessionType } from '../Types';
+import {
+    datet,
+    loosegp,
+    loosegpcircuit,
+    ScheduleAPIloose,
+    session,
+    sessions,
+    sessionType,
+    sessionTypes,
+    year,
+} from '../../Types';
+import { Request } from '../Request';
+import { getDate } from '../Tools';
 
 export class Schedule {
-    constructor(year: 'current' | number) {
+    constructor(year: year) {
         this.year = year;
     }
 
-    public async get(): Promise<Schedule> {
+    async pop(): Promise<Schedule> {
         const data = (await Request(this.year.toString())) as ScheduleAPIloose;
         const schedule = data.MRData;
 
@@ -18,7 +28,7 @@ export class Schedule {
         return this;
     }
 
-    private year: 'current' | number;
+    private year: year;
     initialized: boolean = false;
 
     season: number;
@@ -27,7 +37,7 @@ export class Schedule {
     getAllSessions(): Session[] {
         let ss = [];
         for (const g of this.rounds) {
-            ss.push(...g.getSessionsArray());
+            ss.push(...g.sessions);
         }
         return ss;
     }
@@ -51,45 +61,24 @@ export class GrandPrix {
         this.name = data.raceName;
         this.round = parseInt(data.round);
         this.season = schedule.season;
-        this.sessions = {
-            race: new Session(
-                this,
-                { date: data.date, time: data.time },
-                'Race'
-            ),
-        };
-        if (data.FirstPractice && data.SecondPractice && data.Qualifying) {
-            this.sessions.fp1 = new Session(
-                this,
-                data.FirstPractice,
-                'Free Practice 1'
-            );
-            this.sessions.fp2 = new Session(
-                this,
-                data.SecondPractice,
-                'Free Practice 2'
-            );
-            this.sessions.qualifying = new Session(
-                this,
-                data.Qualifying,
-                'Qualifying'
-            );
-        }
-        if (data.Sprint) {
-            this.sessions.sprint = new Session(
-                this,
-                data.Sprint,
-                'Sprint Qualifying'
-            );
-        } else if (data.ThirdPractice) {
-            this.sessions.fp3 = new Session(
-                this,
-                data.ThirdPractice,
-                'Free Practice 3'
-            );
-        }
+        const {
+            FirstPractice: p1,
+            SecondPractice: p2,
+            ThirdPractice: p3,
+            Qualifying: q,
+            Sprint: s,
+            date,
+            time,
+        } = data;
+        this.sessions = [p1, p2, p3, q, s, { date, time }]
+            .map((s, i) =>
+                s != null
+                    ? new Session(this, s, sessions[i], sessionTypes[i])
+                    : null
+            )
+            .filter(Boolean);
         this.schedule = schedule;
-        this.sprintWeekend = this.sessions.sprint != null;
+        this.sprintWeekend = this.getSession(sessions[4]) != null;
         this.circuit = new Circuit(this, data.Circuit);
     }
 
@@ -99,41 +88,40 @@ export class GrandPrix {
     schedule: Schedule;
     sprintWeekend: boolean;
     circuit: Circuit;
-    sessions: {
-        fp1?: Session;
-        fp2?: Session;
-        fp3?: Session;
-        qualifying?: Session;
-        sprint?: Session;
-        race: Session;
-    };
+    sessions: Session[];
 
-    getSessionsArray(): Session[] {
-        const { fp1, fp2, fp3, qualifying, sprint, race } = this.sessions;
-        return [fp1, fp2, fp3, qualifying, sprint, race].filter(Boolean);
+    getSession(id: session): Session {
+        return this.sessions.find(s => s.name == id);
     }
 }
 
 export class Session {
-    constructor(grandprix: GrandPrix, data: datet, name: sessionType) {
+    constructor(
+        grandprix: GrandPrix,
+        data: datet,
+        name: session,
+        type: sessionType
+    ) {
         this.grandprix = grandprix;
         this.date = getDate({
             date: data.date,
             time: data.time || '00:00:00Z',
         });
-        this.name = name;
         this.completed = this.date < new Date();
+        this.name = name;
+        this.type = type;
     }
 
-    name: sessionType;
+    name: session;
     grandprix: GrandPrix;
     date: Date;
     completed: boolean;
+    type: sessionType;
     // length: number/string? (1:30:00 | 69 laps);
 }
 
 export class Circuit {
-    constructor(grandprix: GrandPrix, data: loosegp['Circuit']) {
+    constructor(grandprix: GrandPrix, data: loosegpcircuit) {
         this.grandprix = grandprix;
         this.name = data.circuitName;
         this.id = data.circuitId;

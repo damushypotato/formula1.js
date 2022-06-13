@@ -1,18 +1,18 @@
-// schedule.ts
+//schedule
+export interface ScheduleAPIloose {
+    MRData: {
+        total: string;
+        RaceTable: {
+            season: string;
+            Races: loosegp[];
+        };
+    };
+}
 
 export interface loosegp {
     round: string;
     raceName: string;
-    Circuit: {
-        circuitId: string;
-        circuitName: string;
-        Location: {
-            lat: string;
-            long: string;
-            locality: string;
-            country: string;
-        };
-    };
+    Circuit: loosegpcircuit;
     //data from 2022 (any beyond?) has datetime for race and all other sessions
     //data before 2022 has race datetime, but only has date for other sessions, no time
     //data before 2021 only has race datetime, no other sessions
@@ -31,58 +31,104 @@ export interface loosegp {
     Sprint?: datetime;
 }
 
-export interface ScheduleAPIloose {
+export interface loosegpcircuit {
+    circuitId: string;
+    circuitName: string;
+    Location: {
+        lat: string;
+        long: string;
+        locality: string;
+        country: string;
+    };
+}
+
+export const sessions = [
+    'Free Practice 1',
+    'Free Practice 2',
+    'Free Practice 3',
+    'Qualifying',
+    'Sprint Qualifying',
+    'Race',
+] as const;
+export type session = typeof sessions[number];
+
+export const sessionTypes = [
+    'practice',
+    'practice',
+    'practice',
+    'qualifying',
+    'qualifying',
+    'race',
+] as const;
+export type sessionType = typeof sessionTypes[number];
+
+export type year = 'current' | number;
+
+// standings
+
+export interface DSAPIloose {
     MRData: {
         total: string;
-        RaceTable: {
-            season: string;
-            Races: loosegp[];
+        StandingsTable: {
+            StandingsLists: [
+                {
+                    season: string;
+                    round: string;
+                    DriverStandings: loosestanding_d[];
+                }
+            ];
         };
     };
 }
-export interface ScheduleResponse {
-    total: string;
-    season: string;
-    gps: GrandPrix[];
+
+export interface loosedriver {
+    driverId: string;
+    permanentNumber?: string;
+    code?: string;
+    url: string;
+    givenName: string;
+    familyName: string;
+    dateOfBirth: string;
+    nationality: string;
 }
 
-export interface GrandPrix {
+export interface looseconstructor {
+    constructorId: string;
+    url: string;
     name: string;
-    round: number;
-    season: number;
-    sprintWeekend: boolean;
-    circuit: Circuit;
-    sessions: Session[];
-    id: string;
+    nationality: string;
 }
 
-export interface Circuit {
-    id: string;
-    name: string;
-    location: CircuitLocation;
+export interface CSAPIloose {
+    MRData: {
+        total: string;
+        StandingsTable: {
+            season: string;
+            StandingsLists: [
+                {
+                    season: string;
+                    round: string;
+                    ConstructorStandings: loosestanding_c[];
+                }
+            ];
+        };
+    };
 }
 
-export interface CircuitLocation {
-    latitude: number;
-    longitude: number;
-    locality: string;
-    country: string;
+export interface loosestanding {
+    position: string;
+    positionText: string;
+    points: string;
+    wins: string;
 }
 
-export type sessionType =
-    | 'Free Practice 1'
-    | 'Free Practice 2'
-    | 'Free Practice 3'
-    | 'Qualifying'
-    | 'Sprint Qualifying'
-    | 'Race';
-
-export interface Session {
-    type: sessionType;
-    date: Date;
-    id: string;
+export interface loosestanding_d extends loosestanding {
+    Driver: loosedriver;
+    Constructors: [looseconstructor];
 }
-//
+export interface loosestanding_c extends loosestanding {
+    Constructor: looseconstructor;
+}
 
 //misc
 export interface datetime {
