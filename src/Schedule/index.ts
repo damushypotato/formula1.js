@@ -9,7 +9,6 @@ export class Schedule {
 
     public async get(): Promise<Schedule> {
         const data = (await Request(this.year.toString())) as ScheduleAPIloose;
-        this.data = data;
         const schedule = data.MRData;
 
         this.season = parseInt(schedule.RaceTable.season);
@@ -20,8 +19,7 @@ export class Schedule {
     }
 
     private year: 'current' | number;
-    private data: ScheduleAPIloose;
-    private initialized: boolean = false;
+    initialized: boolean = false;
 
     season: number;
     rounds: GrandPrix[];
