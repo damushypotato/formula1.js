@@ -32,24 +32,25 @@ export class Standings {
 export class ConstructorStandings extends Standings {
     pop = async (): Promise<ConstructorStandings> => {
         const defaultLimit = 30;
-        const round = `${
-            this.round != null && this.round > 0
-                ? `/${Math.floor(this.round)}`
-                : ''
-        }`;
-        const data = (await Request(
+        const round = `${this.round != null && this.round > 0 ? `/${Math.floor(this.round)}` : ''}`;
+        const data = await Request<CSAPIloose>(
             `${this.year}${round}/constructorStandings`,
             `limit=${this.limit || defaultLimit}`
-        )) as CSAPIloose;
+        );
+
+        if (!data) throw new Error('API Error occured');
+
+        if (!data.MRData.StandingsTable.StandingsLists[0])
+            throw new Error(`No standings found for requested url ${data.MRData.url}`);
 
         const standings = data.MRData.StandingsTable.StandingsLists[0];
+
+        if (!standings) throw new Error('No standings found for requested time');
 
         this.season = parseInt(standings.season);
         this.completedRounds = parseInt(standings.round);
 
-        this.standings = standings.ConstructorStandings.map(
-            s => new ConstructorStanding(this, s)
-        );
+        this.standings = standings.ConstructorStandings.map(s => new ConstructorStanding(this, s));
 
         this.initialized = true;
         return this;
@@ -61,24 +62,23 @@ export class ConstructorStandings extends Standings {
 export class DriverStandings extends Standings {
     pop = async (): Promise<DriverStandings> => {
         const defaultLimit = 150;
-        const round = `${
-            this.round != null && this.round > 0
-                ? `/${Math.floor(this.round)}`
-                : ''
-        }`;
-        const data = (await Request(
+        const round = `${this.round != null && this.round > 0 ? `/${Math.floor(this.round)}` : ''}`;
+        const data = await Request<DSAPIloose>(
             `${this.year}${round}/driverStandings`,
             `limit=${this.limit || defaultLimit}`
-        )) as DSAPIloose;
+        );
+
+        if (!data) throw new Error('API Error occured');
+
+        if (!data.MRData.StandingsTable.StandingsLists[0])
+            throw new Error(`No standings found for requested url ${data.MRData.url}`);
 
         const standings = data.MRData.StandingsTable.StandingsLists[0];
 
         this.season = parseInt(standings.season);
         this.completedRounds = parseInt(standings.round);
 
-        this.standings = standings.DriverStandings.map(
-            s => new DriverStanding(this, s)
-        );
+        this.standings = standings.DriverStandings.map(s => new DriverStanding(this, s));
 
         this.initialized = true;
         return this;

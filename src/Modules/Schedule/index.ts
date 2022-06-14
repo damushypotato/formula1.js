@@ -10,19 +10,37 @@ import {
     year,
 } from '../../Types';
 import { Request } from '../Request';
+import { ConstructorStandings, DriverStandings } from '../Standings';
 import { getDate } from '../Tools';
 
 export class Schedule {
-    constructor(year: year) {
+    constructor(year: year | Schedule) {
+        if (year instanceof Schedule) {
+            this._pop(year);
+            return;
+        }
         this.year = year;
     }
 
-    async pop(): Promise<Schedule> {
-        const data = (await Request(this.year.toString())) as ScheduleAPIloose;
+    async pop(_data?: ScheduleAPIloose): Promise<Schedule> {
+        const data = _data || (await Request<ScheduleAPIloose>(this.year.toString()));
         const schedule = data.MRData;
 
+        if (!schedule) throw new Error('No schedule found for requested time');
+
+        return this._pop(schedule);
+    }
+
+    private _pop(schedule: ScheduleAPIloose['MRData'] | Schedule): Schedule {
+        if (schedule instanceof Schedule) {
+            this.season = schedule.season;
+            this.rounds = schedule.rounds;
+            this.initialized = true;
+            return this;
+        }
+
         this.season = parseInt(schedule.RaceTable.season);
-        this.rounds = schedule.RaceTable.Races.map(r => new GrandPrix(this, r));
+        this.rounds = schedule.RaceTable.Races.map(r => new GrandPrix_S(this, r));
 
         this.initialized = true;
         return this;
@@ -32,7 +50,7 @@ export class Schedule {
     initialized: boolean = false;
 
     season: number;
-    rounds: GrandPrix[];
+    rounds: GrandPrix_S[];
 
     getAllSessions(): Session[] {
         let ss = [];
@@ -57,10 +75,41 @@ export class Schedule {
 }
 
 export class GrandPrix {
-    constructor(schedule: Schedule, data: loosegp) {
-        this.name = data.raceName;
-        this.round = parseInt(data.round);
-        this.season = schedule.season;
+    constructor(year: year | GrandPrix, round?: number) {
+        if (year instanceof GrandPrix) return this._pop(year);
+        if (!round) throw new Error('Invalid round specified. Must be greater than 0');
+        this._year = year;
+        this._round = round;
+    }
+
+    async pop(_data?: ScheduleAPIloose, index = 0): Promise<GrandPrix> {
+        const data = _data || (await Request<ScheduleAPIloose>(`${this._year}/${this._round}`));
+
+        const schedule = data.MRData;
+
+        if (!schedule) throw new Error('No schedule found for requested time');
+
+        if (!schedule.RaceTable.Races[index])
+            throw new Error(`No grand prix found for requested url ${data.MRData.url}`);
+
+        return this._pop(schedule.RaceTable.Races[0]);
+    }
+
+    protected _pop(gp: loosegp | GrandPrix): GrandPrix {
+        if (gp instanceof GrandPrix) {
+            this.name = gp.name;
+            this.round = gp.round;
+            this.season = gp.season;
+            this.sessions = gp.sessions;
+            this.sprintWeekend = gp.sprintWeekend;
+            this.circuit = gp.circuit;
+            this.initialized = true;
+            return this;
+        }
+
+        this.name = gp.raceName;
+        this.round = parseInt(gp.round);
+        this.season = parseInt(gp.season);
         const {
             FirstPractice: p1,
             SecondPractice: p2,
@@ -69,23 +118,25 @@ export class GrandPrix {
             Sprint: s,
             date,
             time,
-        } = data;
+        } = gp;
         this.sessions = [p1, p2, p3, q, s, { date, time }]
-            .map((s, i) =>
-                s != null
-                    ? new Session(this, s, sessions[i], sessionTypes[i])
-                    : null
-            )
+            .map((s, i) => (s != null ? new Session(this, s, sessions[i], sessionTypes[i]) : null))
             .filter(Boolean);
-        this.schedule = schedule;
         this.sprintWeekend = this.getSession(sessions[4]) != null;
-        this.circuit = new Circuit(this, data.Circuit);
+        this.circuit = new Circuit(this, gp.Circuit);
+
+        this.initialized = true;
+
+        return this;
     }
+
+    private _year: year;
+    private _round: number;
+    initialized: boolean = false;
 
     name: string;
     round: number;
     season: number;
-    schedule: Schedule;
     sprintWeekend: boolean;
     circuit: Circuit;
     sessions: Session[];
@@ -93,15 +144,29 @@ export class GrandPrix {
     getSession(id: session): Session {
         return this.sessions.find(s => s.name == id);
     }
+
+    async getDriverStandings(limit?: number): Promise<DriverStandings> {
+        return await new DriverStandings(this.season, this.round, limit).pop();
+    }
+
+    async getConstructorStandings(limit?: number): Promise<ConstructorStandings> {
+        return await new ConstructorStandings(this.season, this.round, limit).pop();
+    }
+}
+
+export class GrandPrix_S extends GrandPrix {
+    constructor(schedule: Schedule, data: loosegp) {
+        super(schedule.season, parseInt(data.round));
+        this._pop(data);
+
+        this.schedule = schedule;
+    }
+
+    schedule: Schedule;
 }
 
 export class Session {
-    constructor(
-        grandprix: GrandPrix,
-        data: datet,
-        name: session,
-        type: sessionType
-    ) {
+    constructor(grandprix: GrandPrix, data: datet, name: session, type: sessionType) {
         this.grandprix = grandprix;
         this.date = getDate({
             date: data.date,

@@ -1,18 +1,48 @@
-//schedule
-export interface ScheduleAPIloose {
-    MRData: {
+//#region Common
+
+export type anythang<name extends string, T> = {
+    [p in name]: T;
+};
+
+export type year = 'current' | number;
+
+export interface datetime {
+    date: string;
+    time: string;
+}
+export interface datet {
+    date: string;
+    time?: string;
+}
+
+//#endregion
+
+//#region MRData
+export interface MRData<n extends string, T> {
+    MRData: anythang<n, T> & {
+        xmlns: string;
+        series: string;
+        url: string;
         total: string;
-        RaceTable: {
-            season: string;
-            Races: loosegp[];
-        };
     };
 }
 
+export type loosetable<n extends string, T> = anythang<n, T[]> & {
+    season: string;
+};
+
+//#endregion
+
+//#region Schedule
+
+export type ScheduleAPIloose = MRData<'RaceTable', loosetable<'Races', loosegp>>;
+
 export interface loosegp {
+    season: string;
     round: string;
     raceName: string;
     Circuit: loosegpcircuit;
+
     //data from 2022 (any beyond?) has datetime for race and all other sessions
     //data before 2022 has race datetime, but only has date for other sessions, no time
     //data before 2021 only has race datetime, no other sessions
@@ -62,23 +92,37 @@ export const sessionTypes = [
 ] as const;
 export type sessionType = typeof sessionTypes[number];
 
-export type year = 'current' | number;
+//#endregion
 
-// standings
+//#region Standings
 
-export interface DSAPIloose {
-    MRData: {
-        total: string;
-        StandingsTable: {
-            StandingsLists: [
-                {
-                    season: string;
-                    round: string;
-                    DriverStandings: loosestanding_d[];
-                }
-            ];
-        };
-    };
+export type DSAPIloose = MRData<
+    'StandingsTable',
+    loosetable<'StandingsLists', standinglist<'DriverStandings', loosestanding_d>>
+>;
+
+export type CSAPIloose = MRData<
+    'StandingsTable',
+    loosetable<'StandingsLists', standinglist<'ConstructorStandings', loosestanding_c>>
+>;
+
+export type standinglist<name extends string, T> = anythang<name, T[]> & {
+    season: string;
+    round: string;
+};
+
+export interface loosestanding {
+    position: string;
+    positionText: string;
+    points: string;
+    wins: string;
+}
+export interface loosestanding_d extends loosestanding {
+    Driver: loosedriver;
+    Constructors: [looseconstructor];
+}
+export interface loosestanding_c extends loosestanding {
+    Constructor: looseconstructor;
 }
 
 export interface loosedriver {
@@ -91,7 +135,6 @@ export interface loosedriver {
     dateOfBirth: string;
     nationality: string;
 }
-
 export interface looseconstructor {
     constructorId: string;
     url: string;
@@ -99,44 +142,4 @@ export interface looseconstructor {
     nationality: string;
 }
 
-export interface CSAPIloose {
-    MRData: {
-        total: string;
-        StandingsTable: {
-            season: string;
-            StandingsLists: [
-                {
-                    season: string;
-                    round: string;
-                    ConstructorStandings: loosestanding_c[];
-                }
-            ];
-        };
-    };
-}
-
-export interface loosestanding {
-    position: string;
-    positionText: string;
-    points: string;
-    wins: string;
-}
-
-export interface loosestanding_d extends loosestanding {
-    Driver: loosedriver;
-    Constructors: [looseconstructor];
-}
-export interface loosestanding_c extends loosestanding {
-    Constructor: looseconstructor;
-}
-
-//misc
-export interface datetime {
-    date: string;
-    time: string;
-}
-
-export interface datet {
-    date: string;
-    time?: string;
-}
+//#endregion Standings
